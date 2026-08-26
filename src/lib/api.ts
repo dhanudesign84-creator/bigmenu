@@ -11,6 +11,9 @@ import {
   deleteMenuItemFromSupabase,
   uploadImageToSupabaseStorage,
   uploadBase64ToSupabaseStorage,
+  sendPasswordResetEmail,
+  updateSupabasePassword,
+  signInWithSupabaseAuth,
 } from "./supabase";
 
 const TOKEN_KEY = "aditya_restaurant_owner_token";
@@ -141,11 +144,32 @@ export const api = {
 
   // Auth Endpoints
   async login(email: string, password: string): Promise<{ token: string; email: string }> {
+    const cleanEmail = email.trim().toLowerCase();
+
+    // 1. Try Supabase Auth
+    if (isSupabaseConfigured()) {
+      try {
+        const { session, user, error } = await signInWithSupabaseAuth(cleanEmail, password);
+        if (session && user) {
+          const token = session.access_token;
+          const userEmail = user.email || cleanEmail;
+          this.setSession(token, userEmail);
+          return { token, email: userEmail };
+        }
+        if (error && !error.includes("Invalid login credentials")) {
+          console.warn("Supabase Auth sign-in message:", error);
+        }
+      } catch (sbErr) {
+        console.warn("Supabase signIn exception:", sbErr);
+      }
+    }
+
+    // 2. Try Server API backend
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: cleanEmail, password }),
       });
       if (res.ok) {
         const json = await res.json();
@@ -163,17 +187,76 @@ export const api = {
       }
     }
 
-    // Static Hosting / Netlify Client Authentication Fallback
-    const storedEmail = localStorage.getItem("owner_email") || "owner@gmail.com";
+    // 3. Static Hosting / Netlify Client Authentication Fallback
+    const storedEmail = (localStorage.getItem("owner_email") || "owner@gmail.com").toLowerCase().trim();
     const storedPass = localStorage.getItem("owner_password") || "admin123";
 
-    if (email.toLowerCase().trim() === storedEmail.toLowerCase().trim() && password === storedPass) {
+    if (cleanEmail === storedEmail && password === storedPass) {
       const clientToken = `token_${Date.now()}_${Math.random().toString(36).substring(2)}`;
-      this.setSession(clientToken, email);
-      return { token: clientToken, email };
+      this.setSession(clientToken, cleanEmail);
+      return { token: clientToken, email: cleanEmail };
     }
 
     throw new Error("Incorrect email or password.");
+  },
+
+  /**
+   * Request Supabase Password Reset Email
+   */
+  async sendPasswordReset(email: string): Promise<{ success: boolean; error?: string }> {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes("@")) {
+      throw new Error("Please enter a valid registered email address.");
+    }
+
+    // 1. Supabase Auth password reset
+    if (isSupabaseConfigured()) {
+      try {
+        const result = await sendPasswordResetEmail(cleanEmail);
+        if (result.success) {
+          return { success: true };
+        }
+        if (result.error) {
+          throw new Error(result.error);
+        }
+      } catch (err: any) {
+        console.warn("Supabase resetPasswordForEmail error:", err);
+        throw new Error(err.message || "Failed to send password reset email.");
+      }
+    }
+
+    return { success: true };
+  },
+
+  /**
+   * Update password after clicking the reset link
+   */
+  async resetPassword(newPassword: string): Promise<{ success: boolean; error?: string }> {
+    if (!newPassword || newPassword.length < 6) {
+      throw new Error("New password must be at least 6 characters.");
+    }
+
+    // 1. Supabase Auth update password
+    if (isSupabaseConfigured()) {
+      try {
+        const result = await updateSupabasePassword(newPassword);
+        if (result.success) {
+          // Sync with local state
+          localStorage.setItem("owner_password", newPassword);
+          return { success: true };
+        }
+        if (result.error) {
+          throw new Error(result.error);
+        }
+      } catch (err: any) {
+        console.warn("Supabase updateSupabasePassword error:", err);
+        throw new Error(err.message || "Failed to update password in Supabase.");
+      }
+    }
+
+    // Local fallback
+    localStorage.setItem("owner_password", newPassword);
+    return { success: true };
   },
 
   async logout(): Promise<void> {
@@ -211,6 +294,15 @@ export const api = {
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
     const token = this.getToken();
     if (!token) throw new Error("Unauthorized");
+
+    // Supabase update if configured
+    if (isSupabaseConfigured()) {
+      try {
+        await updateSupabasePassword(newPassword);
+      } catch (e) {
+        console.warn("Supabase password update in settings:", e);
+      }
+    }
 
     try {
       const res = await fetch("/api/auth/change-password", {

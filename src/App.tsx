@@ -1,16 +1,24 @@
 import React, { useState, useEffect, useCallback } from "react";
 import type { Restaurant, Category, MenuItem } from "./types";
 import { api } from "./lib/api";
+import { onSupabaseAuthStateChange } from "./lib/supabase";
 import { CustomerIntro } from "./components/CustomerIntro";
 import { CustomerMenu } from "./components/CustomerMenu";
 import { OwnerLogin } from "./components/OwnerLogin";
 import { OwnerDashboard } from "./components/OwnerDashboard";
+import { ResetPassword } from "./components/ResetPassword";
 
 export default function App() {
   // Navigation State
-  const [currentRoute, setCurrentRoute] = useState<"menu" | "owner-login" | "owner-dashboard">(() => {
+  const [currentRoute, setCurrentRoute] = useState<"menu" | "owner-login" | "owner-dashboard" | "owner-reset-password">(() => {
     if (typeof window !== "undefined") {
       const path = window.location.pathname;
+      const hash = window.location.hash || "";
+      const search = window.location.search || "";
+
+      if (path.includes("reset-password") || hash.includes("type=recovery") || search.includes("type=recovery")) {
+        return "owner-reset-password";
+      }
       if (path.includes("/owner/dashboard")) return "owner-dashboard";
       if (path.includes("/owner")) return "owner-login";
     }
@@ -28,28 +36,50 @@ export default function App() {
   const [showIntro, setShowIntro] = useState<boolean>(() => {
     // Only show intro if visiting the customer menu
     if (typeof window !== "undefined") {
-      return !window.location.pathname.includes("/owner");
+      return !window.location.pathname.includes("/owner") && !window.location.pathname.includes("reset-password");
     }
     return true;
   });
 
   // Navigation handlers
-  const navigateTo = useCallback((route: "menu" | "owner-login" | "owner-dashboard") => {
+  const navigateTo = useCallback((route: "menu" | "owner-login" | "owner-dashboard" | "owner-reset-password") => {
     setCurrentRoute(route);
     let targetPath = "/menu";
     if (route === "owner-login") targetPath = "/owner/login";
     if (route === "owner-dashboard") targetPath = "/owner/dashboard";
+    if (route === "owner-reset-password") targetPath = "/owner/reset-password";
 
     if (typeof window !== "undefined" && window.location.pathname !== targetPath) {
       window.history.pushState({}, "", targetPath);
     }
   }, []);
 
+  // Listen for Supabase PASSWORD_RECOVERY event
+  useEffect(() => {
+    const { unsubscribe } = onSupabaseAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setCurrentRoute("owner-reset-password");
+        if (typeof window !== "undefined" && window.location.pathname !== "/owner/reset-password") {
+          window.history.pushState({}, "", "/owner/reset-password");
+        }
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
   // Listen for browser back/forward buttons
   useEffect(() => {
     const handlePopState = () => {
       const path = window.location.pathname;
-      if (path.includes("/owner/dashboard")) {
+      const hash = window.location.hash || "";
+      const search = window.location.search || "";
+
+      if (path.includes("reset-password") || hash.includes("type=recovery") || search.includes("type=recovery")) {
+        setCurrentRoute("owner-reset-password");
+      } else if (path.includes("/owner/dashboard")) {
         setCurrentRoute("owner-dashboard");
       } else if (path.includes("/owner")) {
         setCurrentRoute("owner-login");
@@ -151,6 +181,14 @@ export default function App() {
         <OwnerLogin
           onLoginSuccess={() => navigateTo("owner-dashboard")}
           onBackToMenu={() => navigateTo("menu")}
+          onOpenResetPassword={() => navigateTo("owner-reset-password")}
+        />
+      )}
+
+      {currentRoute === "owner-reset-password" && (
+        <ResetPassword
+          onBackToLogin={() => navigateTo("owner-login")}
+          onSuccess={() => navigateTo("owner-login")}
         />
       )}
 

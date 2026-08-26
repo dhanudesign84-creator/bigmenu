@@ -538,3 +538,109 @@ export async function uploadBase64ToSupabaseStorage(
   return uploadImageToSupabaseStorage(file, customName);
 }
 
+/**
+ * Sends a password reset email using Supabase Authentication.
+ */
+export async function sendPasswordResetEmail(
+  email: string,
+  redirectTo?: string
+): Promise<{ success: boolean; error?: string }> {
+  const client = (await ensureSupabaseInitialized()) || getSupabase();
+  if (!client) {
+    throw new Error("Supabase client is not initialized.");
+  }
+
+  const defaultRedirect =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/owner/reset-password`
+      : undefined;
+
+  const { error } = await client.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: redirectTo || defaultRedirect,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Updates the user's password using the current Supabase Auth recovery session.
+ */
+export async function updateSupabasePassword(
+  newPassword: string
+): Promise<{ success: boolean; error?: string }> {
+  const client = (await ensureSupabaseInitialized()) || getSupabase();
+  if (!client) {
+    throw new Error("Supabase client is not initialized.");
+  }
+
+  const { error } = await client.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Sign in using Supabase Auth with email & password.
+ */
+export async function signInWithSupabaseAuth(
+  email: string,
+  password: string
+): Promise<{ session: any; user: any; error?: string }> {
+  const client = (await ensureSupabaseInitialized()) || getSupabase();
+  if (!client) {
+    return { session: null, user: null, error: "Supabase client not initialized" };
+  }
+
+  const { data, error } = await client.auth.signInWithPassword({
+    email: email.trim(),
+    password,
+  });
+
+  if (error) {
+    return { session: null, user: null, error: error.message };
+  }
+
+  return { session: data.session, user: data.user };
+}
+
+/**
+ * Gets current active Supabase Auth session.
+ */
+export async function getSupabaseSession(): Promise<any> {
+  const client = (await ensureSupabaseInitialized()) || getSupabase();
+  if (!client) return null;
+  const { data } = await client.auth.getSession();
+  return data.session;
+}
+
+/**
+ * Subscribe to Supabase Auth state changes (e.g. PASSWORD_RECOVERY).
+ */
+export function onSupabaseAuthStateChange(
+  callback: (event: string, session: any) => void
+): { unsubscribe: () => void } {
+  const client = getSupabase();
+  if (!client) {
+    return { unsubscribe: () => {} };
+  }
+
+  const { data } = client.auth.onAuthStateChange((event, session) => {
+    callback(event, session);
+  });
+
+  return {
+    unsubscribe: () => {
+      data.subscription.unsubscribe();
+    },
+  };
+}
+
