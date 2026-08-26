@@ -1,0 +1,6 @@
+{
+  "name": "Aditya Restaurant QR Menu",
+  "description": "Single-restaurant digital QR menu with mobile-first customer experience, dynamic featured food, instant search, categories, and private owner management system.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
