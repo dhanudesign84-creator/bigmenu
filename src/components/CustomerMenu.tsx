@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { motion } from "motion/react";
-import { Search, Utensils, Lock, MapPin, Phone, RefreshCw, Layers, AlertCircle } from "lucide-react";
+import { Search, Utensils, Lock, MapPin, RefreshCw, Layers, AlertCircle } from "lucide-react";
 import type { Restaurant, Category, MenuItem } from "../types";
 import { FeaturedFoodCard } from "./FeaturedFoodCard";
 import { RecommendedSection } from "./RecommendedSection";
@@ -192,19 +192,13 @@ export const CustomerMenu: React.FC<CustomerMenuProps> = ({
 
         {/* Main Content Area */}
         <main className="p-4 sm:p-5 flex-1 space-y-5">
-          {/* Restaurant Location and Info Snippet */}
+          {/* Restaurant Location Snippet */}
           {currentRestaurant.address && (
-            <div className="flex items-center justify-between text-xs text-[#686868] px-1">
+            <div className="flex items-center text-xs text-[#686868] px-1">
               <div className="flex items-center gap-1 line-clamp-1">
                 <MapPin className="w-3.5 h-3.5 text-[#0C831F] shrink-0" />
                 <span>{currentRestaurant.address}</span>
               </div>
-              {currentRestaurant.phone && (
-                <div className="flex items-center gap-1 shrink-0 ml-2">
-                  <Phone className="w-3.5 h-3.5 text-[#0C831F]" />
-                  <span>{currentRestaurant.phone}</span>
-                </div>
-              )}
             </div>
           )}
 

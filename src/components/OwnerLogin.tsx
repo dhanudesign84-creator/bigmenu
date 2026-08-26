@@ -8,7 +8,7 @@ interface OwnerLoginProps {
 }
 
 export const OwnerLogin: React.FC<OwnerLoginProps> = ({ onLoginSuccess, onBackToMenu }) => {
-  const [email, setEmail] = useState("owner@gmail.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -32,12 +32,6 @@ export const OwnerLogin: React.FC<OwnerLoginProps> = ({ onLoginSuccess, onBackTo
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleFillDemo = () => {
-    setEmail("owner@gmail.com");
-    setPassword("CHANGE_THIS_PASSWORD");
-    setErrorMessage("");
   };
 
   return (
@@ -138,24 +132,6 @@ export const OwnerLogin: React.FC<OwnerLoginProps> = ({ onLoginSuccess, onBackTo
             {loading ? "Authenticating..." : "Login to Dashboard"}
           </button>
         </form>
-
-        {/* Quick Demo Helper Hint */}
-        <div className="mt-6 pt-5 border-t border-gray-100 text-center">
-          <p className="text-[11px] text-[#686868]">
-            Initial Setup Credentials:
-          </p>
-          <div className="mt-1.5 p-2.5 rounded-xl bg-amber-50 border border-amber-200/80 text-[11px] text-[#1F1F1F] font-mono flex flex-col gap-0.5 items-center">
-            <span>Gmail: <strong>owner@gmail.com</strong></span>
-            <span>Password: <strong>CHANGE_THIS_PASSWORD</strong></span>
-          </div>
-          <button
-            type="button"
-            onClick={handleFillDemo}
-            className="mt-2 text-xs font-semibold text-[#0C831F] hover:underline cursor-pointer"
-          >
-            Auto-fill credentials
-          </button>
-        </div>
       </div>
     </div>
   );
