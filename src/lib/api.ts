@@ -9,6 +9,8 @@ import {
   insertMenuItemInSupabase,
   updateMenuItemInSupabase,
   deleteMenuItemFromSupabase,
+  uploadImageToSupabaseStorage,
+  uploadBase64ToSupabaseStorage,
 } from "./supabase";
 
 const TOKEN_KEY = "aditya_restaurant_owner_token";
@@ -488,6 +490,21 @@ export const api = {
     const token = this.getToken();
     if (!token) throw new Error("Unauthorized");
 
+    // 1. Direct Supabase Storage Bucket Upload (menu-images / menu image)
+    if (isSupabaseConfigured()) {
+      try {
+        const publicUrl = await uploadImageToSupabaseStorage(file);
+        if (publicUrl) return publicUrl;
+      } catch (err: any) {
+        console.warn("Supabase storage upload error:", err);
+        // If error is specific (like RLS or bucket issue), preserve message or propagate if appropriate
+        if (err.message && err.message.includes("permissions required")) {
+          throw err;
+        }
+      }
+    }
+
+    // 2. Server API fallback if running full-stack
     try {
       const formData = new FormData();
       formData.append("image", file);
@@ -503,7 +520,7 @@ export const api = {
       }
     } catch {}
 
-    // Netlify / Client-side Data URL conversion fallback
+    // 3. Client-side Data URL conversion fallback
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -522,6 +539,20 @@ export const api = {
     const token = this.getToken();
     if (!token) throw new Error("Unauthorized");
 
+    // 1. Direct Supabase Storage Bucket Upload
+    if (isSupabaseConfigured()) {
+      try {
+        const publicUrl = await uploadBase64ToSupabaseStorage(base64Data);
+        if (publicUrl) return publicUrl;
+      } catch (err: any) {
+        console.warn("Supabase storage base64 upload error:", err);
+        if (err.message && err.message.includes("permissions required")) {
+          throw err;
+        }
+      }
+    }
+
+    // 2. Server API fallback
     try {
       const res = await fetch("/api/upload", {
         method: "POST",

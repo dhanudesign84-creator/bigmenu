@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Edit2, Trash2, Check, X, Search, Plus, Filter, Image as ImageIcon, CheckCircle2, XCircle } from "lucide-react";
+import { Edit2, Trash2, Check, X, Search, Plus, Filter, Image as ImageIcon, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import type { MenuItem, Category, Restaurant } from "../types";
 import { api } from "../lib/api";
 
@@ -394,23 +394,45 @@ export const ManageFoodsTab: React.FC<ManageFoodsTabProps> = ({
               {/* Image Preview & Upload */}
               <div>
                 <label className="block text-xs font-bold uppercase text-[#1F1F1F] mb-1.5">
-                  Food Image
+                  Food Image (Supabase Storage)
                 </label>
                 <div className="flex items-center gap-4">
-                  <div className="w-20 h-20 rounded-xl bg-gray-100 overflow-hidden shrink-0 border">
-                    <img src={editImage} alt="Preview" className="w-full h-full object-cover" />
+                  <div className="relative w-20 h-20 rounded-2xl bg-gray-100 overflow-hidden shrink-0 border border-gray-200 shadow-xs">
+                    <img
+                      src={editImage || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80"}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    {editUploadLoading && (
+                      <div className="absolute inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center text-white">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1">
-                    <label className="inline-block px-3 py-2 bg-gray-100 hover:bg-gray-200 text-[#1F1F1F] text-xs font-bold rounded-xl cursor-pointer">
-                      <span>{editUploadLoading ? "Uploading..." : "Change Image from Gallery"}</span>
+                    <label className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-[#1F1F1F] text-xs font-bold rounded-xl cursor-pointer transition-colors active:scale-95 shadow-xs">
+                      {editUploadLoading ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-[#0C831F]" />
+                          <span>Uploading to Storage...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ImageIcon className="w-3.5 h-3.5 text-[#0C831F]" />
+                          <span>Change Image</span>
+                        </>
+                      )}
                       <input
                         type="file"
                         accept="image/jpeg,image/png,image/webp,image/jpg"
                         onChange={handleImageFileChange}
+                        disabled={editUploadLoading}
                         className="hidden"
                       />
                     </label>
-                    <p className="text-[11px] text-[#686868] mt-1">Supports JPG, PNG, WEBP</p>
+                    <p className="text-[11px] text-[#686868] mt-1.5">
+                      Uploads directly to <strong>menu-images</strong> bucket
+                    </p>
                   </div>
                 </div>
               </div>
