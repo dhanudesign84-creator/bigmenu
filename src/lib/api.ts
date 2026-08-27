@@ -98,16 +98,43 @@ export const api = {
   },
 
   async getCategories(): Promise<Category[]> {
+    let baseCategories: Category[] = [];
     if (isSupabaseConfigured()) {
       try {
-        const supabaseCategories = await fetchCategoriesFromSupabase();
-        if (supabaseCategories && supabaseCategories.length > 0) {
-          return supabaseCategories;
-        }
+        baseCategories = await fetchCategoriesFromSupabase();
       } catch (err) {
         console.error("Failed to load categories from Supabase:", err);
       }
     }
+
+    // Load custom empty categories
+    let customCats: Category[] = [];
+    try {
+      const saved = localStorage.getItem("custom_empty_categories");
+      if (saved) {
+        customCats = JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn("Could not read custom_empty_categories:", e);
+    }
+
+    // Combine them, avoiding duplicates by id or name
+    const combined = [...baseCategories];
+    customCats.forEach((lCat) => {
+      const exists = combined.some(
+        (c) =>
+          c.id.toLowerCase().trim() === lCat.id.toLowerCase().trim() ||
+          c.name.toLowerCase().trim() === lCat.name.toLowerCase().trim()
+      );
+      if (!exists) {
+        combined.push(lCat);
+      }
+    });
+
+    if (combined.length > 0) {
+      return combined.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    }
+
     try {
       const res = await fetch("/api/categories");
       if (res.ok) {
@@ -122,7 +149,6 @@ export const api = {
     } catch {}
 
     return [
-      { id: "cat_all", name: "All Dishes", sort_order: 0 },
       { id: "starter", name: "Starters", sort_order: 1 },
       { id: "main", name: "Main Course", sort_order: 2 },
       { id: "breads", name: "Breads", sort_order: 3 },
@@ -361,13 +387,53 @@ export const api = {
   async addCategory(name: string): Promise<Category> {
     const token = this.getToken();
     if (!token) throw new Error("Unauthorized");
+
+    const cleanName = name.trim();
+    const id = cleanName.toLowerCase().replace(/\s+/g, "_");
+
+    if (isSupabaseConfigured()) {
+      const newCat: Category = {
+        id,
+        name: cleanName,
+        sort_order: 10,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      try {
+        let customCats: Category[] = [];
+        const saved = localStorage.getItem("custom_empty_categories");
+        if (saved) {
+          customCats = JSON.parse(saved);
+        }
+        if (!customCats.some((c) => c.id === id)) {
+          customCats.push(newCat);
+          localStorage.setItem("custom_empty_categories", JSON.stringify(customCats));
+        }
+      } catch (e) {
+        console.error("Storage error:", e);
+      }
+
+      // Fire background call to server just to keep things in sync if possible, but do not block or crash on it
+      fetch("/api/categories", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name: cleanName }),
+      }).catch(() => {});
+
+      return newCat;
+    }
+
     const res = await fetch("/api/categories", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name: cleanName }),
     });
     const json = await res.json();
     if (!json.success) throw new Error(json.error || "Failed to add category");
@@ -377,13 +443,74 @@ export const api = {
   async updateCategory(id: string, name: string): Promise<Category> {
     const token = this.getToken();
     if (!token) throw new Error("Unauthorized");
+
+    const cleanName = name.trim();
+    const newId = cleanName.toLowerCase().replace(/\s+/g, "_");
+
+    if (isSupabaseConfigured()) {
+      try {
+        // 1. Rename category in Supabase for all dishes that currently belong to the old category ID/name
+        if (supabase) {
+          const { error } = await supabase
+            .from("menu_items")
+            .update({ category: newId })
+            .eq("category", id);
+
+          if (error) {
+            console.error("Failed to rename category in Supabase menu_items:", error);
+            throw new Error(`Supabase update failed: ${error.message}`);
+          }
+        }
+
+        // 2. Update custom empty categories in localStorage
+        let customCats: Category[] = [];
+        const saved = localStorage.getItem("custom_empty_categories");
+        if (saved) {
+          customCats = JSON.parse(saved);
+        }
+        customCats = customCats.map((c) => {
+          if (c.id === id) {
+            return {
+              ...c,
+              id: newId,
+              name: cleanName,
+              updated_at: new Date().toISOString(),
+            };
+          }
+          return c;
+        });
+        localStorage.setItem("custom_empty_categories", JSON.stringify(customCats));
+
+        // 3. Fire-and-forget server sync in background
+        fetch(`/api/categories/${id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ name: cleanName }),
+        }).catch(() => {});
+
+        return {
+          id: newId,
+          name: cleanName,
+          sort_order: 10,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+      } catch (err: any) {
+        console.error("Failed to update category in Supabase flow:", err);
+        throw err;
+      }
+    }
+
     const res = await fetch(`/api/categories/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name: cleanName }),
     });
     const json = await res.json();
     if (!json.success) throw new Error(json.error || "Failed to update category");
@@ -393,6 +520,28 @@ export const api = {
   async deleteCategory(id: string): Promise<void> {
     const token = this.getToken();
     if (!token) throw new Error("Unauthorized");
+
+    if (isSupabaseConfigured()) {
+      try {
+        let customCats: Category[] = [];
+        const saved = localStorage.getItem("custom_empty_categories");
+        if (saved) {
+          customCats = JSON.parse(saved);
+        }
+        customCats = customCats.filter((c) => c.id !== id);
+        localStorage.setItem("custom_empty_categories", JSON.stringify(customCats));
+      } catch (e) {
+        console.error("Storage error:", e);
+      }
+
+      fetch(`/api/categories/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {});
+
+      return;
+    }
+
     const res = await fetch(`/api/categories/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
