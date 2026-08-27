@@ -57,7 +57,7 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ onBackToLogin, onS
       setIsCompleted(true);
       // Clean URL hash
       if (typeof window !== "undefined" && window.history.replaceState) {
-        window.history.replaceState({}, "", "/owner/login");
+        window.history.replaceState({}, "", "/login");
       }
     } catch (err: any) {
       setErrorMessage(

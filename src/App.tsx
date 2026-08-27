@@ -9,19 +9,24 @@ import { OwnerDashboard } from "./components/OwnerDashboard";
 import { ResetPassword } from "./components/ResetPassword";
 
 export default function App() {
-  // Navigation State
+  // Navigation State: "/" -> "menu", "/login" -> "owner-login", "/admin" -> "owner-dashboard"
   const [currentRoute, setCurrentRoute] = useState<"menu" | "owner-login" | "owner-dashboard" | "owner-reset-password">(() => {
     if (typeof window !== "undefined") {
-      const path = window.location.pathname;
+      const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash || "";
       const search = window.location.search || "";
 
       if (path.includes("reset-password") || hash.includes("type=recovery") || search.includes("type=recovery")) {
         return "owner-reset-password";
       }
-      if (path.includes("/owner/dashboard")) return "owner-dashboard";
-      if (path.includes("/owner")) return "owner-login";
+      if (path === "/admin" || path.startsWith("/admin/") || path.includes("/owner/dashboard")) {
+        return "owner-dashboard";
+      }
+      if (path === "/login" || path.startsWith("/login/") || path === "/owner" || path.startsWith("/owner/login") || path.startsWith("/owner/")) {
+        return "owner-login";
+      }
     }
+    // Default public route is ALWAYS the Customer Menu at "/"
     return "menu";
   });
 
@@ -31,26 +36,31 @@ export default function App() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authChecking, setAuthChecking] = useState(false);
 
-  // Customer Intro animation state
+  // Customer Intro animation state (only for customer menu)
   const [showIntro, setShowIntro] = useState<boolean>(() => {
-    // Only show intro if visiting the customer menu
     if (typeof window !== "undefined") {
-      return !window.location.pathname.includes("/owner") && !window.location.pathname.includes("reset-password");
+      const path = window.location.pathname.toLowerCase();
+      return path === "/" || path === "/menu" || path === "";
     }
     return true;
   });
 
   // Navigation handlers
-  const navigateTo = useCallback((route: "menu" | "owner-login" | "owner-dashboard" | "owner-reset-password") => {
+  const navigateTo = useCallback((route: "menu" | "owner-login" | "owner-dashboard" | "owner-reset-password", replace = false) => {
     setCurrentRoute(route);
-    let targetPath = "/menu";
-    if (route === "owner-login") targetPath = "/owner/login";
-    if (route === "owner-dashboard") targetPath = "/owner/dashboard";
-    if (route === "owner-reset-password") targetPath = "/owner/reset-password";
+    let targetPath = "/";
+    if (route === "owner-login") targetPath = "/login";
+    if (route === "owner-dashboard") targetPath = "/admin";
+    if (route === "owner-reset-password") targetPath = "/reset-password";
 
     if (typeof window !== "undefined" && window.location.pathname !== targetPath) {
-      window.history.pushState({}, "", targetPath);
+      if (replace) {
+        window.history.replaceState({}, "", targetPath);
+      } else {
+        window.history.pushState({}, "", targetPath);
+      }
     }
   }, []);
 
@@ -59,8 +69,8 @@ export default function App() {
     const { unsubscribe } = onSupabaseAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         setCurrentRoute("owner-reset-password");
-        if (typeof window !== "undefined" && window.location.pathname !== "/owner/reset-password") {
-          window.history.pushState({}, "", "/owner/reset-password");
+        if (typeof window !== "undefined" && window.location.pathname !== "/reset-password") {
+          window.history.pushState({}, "", "/reset-password");
         }
       }
     });
@@ -73,15 +83,15 @@ export default function App() {
   // Listen for browser back/forward buttons
   useEffect(() => {
     const handlePopState = () => {
-      const path = window.location.pathname;
+      const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash || "";
       const search = window.location.search || "";
 
       if (path.includes("reset-password") || hash.includes("type=recovery") || search.includes("type=recovery")) {
         setCurrentRoute("owner-reset-password");
-      } else if (path.includes("/owner/dashboard")) {
+      } else if (path === "/admin" || path.startsWith("/admin/") || path.includes("/owner/dashboard")) {
         setCurrentRoute("owner-dashboard");
-      } else if (path.includes("/owner")) {
+      } else if (path === "/login" || path.startsWith("/login/") || path === "/owner" || path.startsWith("/owner/login") || path.startsWith("/owner/")) {
         setCurrentRoute("owner-login");
       } else {
         setCurrentRoute("menu");
@@ -91,7 +101,7 @@ export default function App() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
-  // Load all restaurant database data
+  // Load all restaurant database data (publicly readable for customer menu)
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -125,16 +135,34 @@ export default function App() {
     loadData();
   }, [loadData]);
 
-  // Auth protection for /owner/dashboard
+  // Auth protection for /admin route: redirect unauthenticated users to /login
   useEffect(() => {
     if (currentRoute === "owner-dashboard") {
-      const checkSession = async () => {
-        const isAuth = await api.checkAuth();
-        if (!isAuth) {
-          navigateTo("owner-login");
+      let isMounted = true;
+      setAuthChecking(true);
+      const verifyAuth = async () => {
+        try {
+          const isAuth = await api.checkAuth();
+          if (!isAuth && isMounted) {
+            // Unauthenticated user trying to access /admin -> redirect to /login
+            navigateTo("owner-login", true);
+          }
+        } catch (e) {
+          if (isMounted) {
+            navigateTo("owner-login", true);
+          }
+        } finally {
+          if (isMounted) {
+            setAuthChecking(false);
+          }
         }
       };
-      checkSession();
+      verifyAuth();
+      return () => {
+        isMounted = false;
+      };
+    } else {
+      setAuthChecking(false);
     }
   }, [currentRoute, navigateTo]);
 
@@ -166,6 +194,7 @@ export default function App() {
       )}
 
       {/* Route Views */}
+      {/* 1. Public Customer Restaurant Menu: "/" */}
       {currentRoute === "menu" && (
         <CustomerMenu
           restaurant={restaurant}
@@ -177,6 +206,7 @@ export default function App() {
         />
       )}
 
+      {/* 2. Restaurant Owner Login: "/login" */}
       {currentRoute === "owner-login" && (
         <OwnerLogin
           onLoginSuccess={() => navigateTo("owner-dashboard")}
@@ -185,6 +215,7 @@ export default function App() {
         />
       )}
 
+      {/* 3. Password Recovery: "/reset-password" */}
       {currentRoute === "owner-reset-password" && (
         <ResetPassword
           onBackToLogin={() => navigateTo("owner-login")}
@@ -192,15 +223,25 @@ export default function App() {
         />
       )}
 
-      {currentRoute === "owner-dashboard" && restaurant && (
-        <OwnerDashboard
-          restaurant={restaurant}
-          categories={categories}
-          menuItems={menuItems}
-          onLogout={() => navigateTo("owner-login")}
-          onRefresh={loadData}
-          onViewMenu={() => navigateTo("menu")}
-        />
+      {/* 4. Protected Owner Management Dashboard: "/admin" */}
+      {currentRoute === "owner-dashboard" && (
+        authChecking ? (
+          <div className="min-h-screen bg-[#F7F7F7] flex flex-col items-center justify-center p-6">
+            <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center animate-pulse mb-3">
+              <div className="w-5 h-5 border-2 border-amber-800 border-t-transparent rounded-full animate-spin" />
+            </div>
+            <p className="text-sm font-semibold text-[#1F1F1F]">Checking Owner Authorization...</p>
+          </div>
+        ) : restaurant ? (
+          <OwnerDashboard
+            restaurant={restaurant}
+            categories={categories}
+            menuItems={menuItems}
+            onLogout={() => navigateTo("owner-login", true)}
+            onRefresh={loadData}
+            onViewMenu={() => navigateTo("menu")}
+          />
+        ) : null
       )}
     </div>
   );

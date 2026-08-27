@@ -12,8 +12,8 @@ export const QrCodeTab: React.FC<QrCodeTabProps> = ({ restaurant }) => {
   const [copied, setCopied] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Generate Menu URL
-  const menuUrl = typeof window !== "undefined" ? `${window.location.origin}/menu` : "http://localhost:3000/menu";
+  // Generate Menu URL pointing to main homepage "/"
+  const menuUrl = typeof window !== "undefined" ? `${window.location.origin}/` : "http://localhost:3000/";
 
   useEffect(() => {
     QRCode.toDataURL(
@@ -119,7 +119,7 @@ export const QrCodeTab: React.FC<QrCodeTabProps> = ({ restaurant }) => {
           </button>
 
           <a
-            href="/menu"
+            href="/"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-200 text-[#1F1F1F] text-xs sm:text-sm font-bold hover:bg-gray-50 transition-all active:scale-95 cursor-pointer"
