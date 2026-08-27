@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { motion } from "motion/react";
-import { Search, Utensils, Lock, MapPin, RefreshCw, Layers, AlertCircle } from "lucide-react";
+import { Search, Utensils, Lock, MapPin, RefreshCw, Layers, AlertCircle, Clock } from "lucide-react";
 import type { Restaurant, Category, MenuItem } from "../types";
 import { FeaturedFoodCard } from "./FeaturedFoodCard";
 import { RecommendedSection } from "./RecommendedSection";
@@ -378,10 +378,16 @@ export const CustomerMenu: React.FC<CustomerMenuProps> = ({
                         </div>
 
                         {/* Category Label */}
-                        <div className="flex items-center gap-2 mt-0.5">
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <span className="text-[11px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">
                             {catName}
                           </span>
+                          {food.prep_time && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">
+                              <Clock className="w-3 h-3 text-gray-500" />
+                              {food.prep_time} mins
+                            </span>
+                          )}
                           {!isAvailable && (
                             <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md border border-red-200">
                               <AlertCircle className="w-3 h-3" />

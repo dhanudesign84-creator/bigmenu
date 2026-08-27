@@ -35,6 +35,7 @@ export const ManageFoodsTab: React.FC<ManageFoodsTabProps> = ({
   const [editImage, setEditImage] = useState("");
   const [editAvailable, setEditAvailable] = useState(true);
   const [editVegetarian, setEditVegetarian] = useState(true);
+  const [editPrepTime, setEditPrepTime] = useState("");
   const [editUploadLoading, setEditUploadLoading] = useState(false);
 
   const openEditModal = (item: MenuItem) => {
@@ -46,6 +47,7 @@ export const ManageFoodsTab: React.FC<ManageFoodsTabProps> = ({
     setEditImage(item.image_url);
     setEditAvailable(item.available);
     setEditVegetarian(item.vegetarian);
+    setEditPrepTime(item.prep_time !== undefined ? String(item.prep_time) : "");
     setStatusMessage(null);
   };
 
@@ -120,6 +122,7 @@ export const ManageFoodsTab: React.FC<ManageFoodsTabProps> = ({
         image_url: editImage,
         available: editAvailable,
         vegetarian: editVegetarian,
+        prep_time: editPrepTime ? Number(editPrepTime) : undefined,
       });
       closeEditModal();
       onRefresh();
@@ -497,6 +500,21 @@ export const ManageFoodsTab: React.FC<ManageFoodsTabProps> = ({
                     ))}
                   </select>
                 </div>
+              </div>
+
+              {/* Preparation Time */}
+              <div>
+                <label className="block text-xs font-bold uppercase text-[#1F1F1F] mb-1">
+                  Preparation / Cooking Time (Minutes)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={editPrepTime}
+                  onChange={(e) => setEditPrepTime(e.target.value)}
+                  placeholder="e.g. 15"
+                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#0C831F] focus:outline-none"
+                />
               </div>
 
               {/* Availability & Dietary Type */}

@@ -550,6 +550,20 @@ export const api = {
     if (!json.success) throw new Error(json.error || "Failed to delete category");
   },
 
+  saveItemMetadata(id: string, metadata: { description?: string; vegetarian?: boolean; prep_time?: number }) {
+    try {
+      const saved = localStorage.getItem("menu_item_metadata") || "{}";
+      const data = JSON.parse(saved);
+      data[id] = {
+        ...(data[id] || {}),
+        ...metadata,
+      };
+      localStorage.setItem("menu_item_metadata", JSON.stringify(data));
+    } catch (e) {
+      console.warn("Could not save menu item metadata to localStorage:", e);
+    }
+  },
+
   async addMenuItem(itemData: Omit<MenuItem, "id" | "created_at" | "updated_at">): Promise<MenuItem> {
     const token = this.getToken();
     if (!token) throw new Error("Unauthorized");
@@ -565,6 +579,18 @@ export const api = {
           available: itemData.available,
         });
         if (item) {
+          // Save metadata locally for description, vegetarian preference, and preparation time
+          this.saveItemMetadata(item.id, {
+            description: itemData.description,
+            vegetarian: itemData.vegetarian,
+            prep_time: itemData.prep_time,
+          });
+
+          // Mix into returned object
+          item.description = itemData.description;
+          item.vegetarian = itemData.vegetarian;
+          item.prep_time = itemData.prep_time;
+
           fetch("/api/menu-items", {
             method: "POST",
             headers: {
@@ -607,6 +633,18 @@ export const api = {
           available: itemData.available,
         });
         if (item) {
+          // Save metadata locally
+          this.saveItemMetadata(item.id, {
+            description: itemData.description,
+            vegetarian: itemData.vegetarian,
+            prep_time: itemData.prep_time,
+          });
+
+          // Mix into returned object
+          if (itemData.description !== undefined) item.description = itemData.description;
+          if (itemData.vegetarian !== undefined) item.vegetarian = itemData.vegetarian;
+          if (itemData.prep_time !== undefined) item.prep_time = itemData.prep_time;
+
           fetch(`/api/menu-items/${id}`, {
             method: "PUT",
             headers: {

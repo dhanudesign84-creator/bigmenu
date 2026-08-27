@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "motion/react";
-import { ThumbsUp } from "lucide-react";
+import { ThumbsUp, Clock } from "lucide-react";
 import type { MenuItem, Restaurant } from "../types";
 
 interface RecommendedSectionProps {
@@ -53,6 +53,12 @@ export const RecommendedSection: React.FC<RecommendedSectionProps> = ({ items, r
                   {food.vegetarian ? "Veg" : "Non-Veg"}
                 </span>
               </div>
+              {food.prep_time && (
+                <div className="absolute top-2.5 right-2.5 bg-white/90 backdrop-blur-xs px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs border border-gray-100 text-[10px] font-bold text-[#1F1F1F]">
+                  <Clock className="w-3 h-3 text-gray-500" />
+                  <span>{food.prep_time} mins</span>
+                </div>
+              )}
               {!food.available && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                   <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">

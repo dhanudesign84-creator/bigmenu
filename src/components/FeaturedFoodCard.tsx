@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "motion/react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Clock } from "lucide-react";
 import type { MenuItem, Restaurant } from "../types";
 
 interface FeaturedFoodCardProps {
@@ -54,7 +54,13 @@ export const FeaturedFoodCard: React.FC<FeaturedFoodCardProps> = ({ food, restau
             </span>
           </div>
 
-          <div className="absolute top-3 right-3 flex items-center gap-1.5">
+          <div className="absolute top-3 right-3 flex items-center gap-1.5 flex-wrap justify-end">
+            {food.prep_time && (
+              <div className="bg-white/95 backdrop-blur-xs text-[#1F1F1F] text-[10px] font-extrabold px-2 py-1 rounded-full shadow-sm flex items-center gap-1 border border-gray-100">
+                <Clock className="w-3 h-3 text-gray-500" />
+                <span>{food.prep_time} mins</span>
+              </div>
+            )}
             {!food.available && (
               <span className="bg-red-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm">
                 Unavailable

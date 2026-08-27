@@ -343,7 +343,7 @@ app.delete("/api/categories/:id", validateAuth, (req, res) => {
 
 // 5. Add Menu Item
 app.post("/api/menu-items", validateAuth, (req, res) => {
-  const { name, description, price, category_id, image_url, available, vegetarian } = req.body;
+  const { name, description, price, category_id, image_url, available, vegetarian, prep_time } = req.body;
 
   if (!name || !name.trim()) {
     return res.status(400).json({ success: false, error: "Food name is required." });
@@ -367,6 +367,7 @@ app.post("/api/menu-items", validateAuth, (req, res) => {
     image_url: image_url || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80",
     available: available !== false,
     vegetarian: vegetarian !== false,
+    prep_time: prep_time ? Number(prep_time) : undefined,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -379,7 +380,7 @@ app.post("/api/menu-items", validateAuth, (req, res) => {
 // 6. Edit Menu Item (Full update)
 app.put("/api/menu-items/:id", validateAuth, (req, res) => {
   const { id } = req.params;
-  const { name, description, price, category_id, image_url, available, vegetarian } = req.body;
+  const { name, description, price, category_id, image_url, available, vegetarian, prep_time } = req.body;
 
   if (!name || !name.trim()) {
     return res.status(400).json({ success: false, error: "Food name is required." });
@@ -407,6 +408,7 @@ app.put("/api/menu-items/:id", validateAuth, (req, res) => {
     image_url: image_url || db.menu_items[idx].image_url,
     available: Boolean(available),
     vegetarian: Boolean(vegetarian),
+    prep_time: prep_time ? Number(prep_time) : undefined,
     updated_at: new Date().toISOString(),
   };
 

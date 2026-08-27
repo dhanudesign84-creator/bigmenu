@@ -22,6 +22,7 @@ export const AddFoodTab: React.FC<AddFoodTabProps> = ({
   const [categoryId, setCategoryId] = useState(categories[0]?.id || "");
   const [available, setAvailable] = useState(true);
   const [vegetarian, setVegetarian] = useState(true);
+  const [prepTime, setPrepTime] = useState("");
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -136,6 +137,7 @@ export const AddFoodTab: React.FC<AddFoodTabProps> = ({
         image_url: finalImageUrl,
         available,
         vegetarian,
+        prep_time: prepTime ? Number(prepTime) : undefined,
       });
 
       onSuccess();
@@ -322,6 +324,22 @@ export const AddFoodTab: React.FC<AddFoodTabProps> = ({
               ))}
             </select>
           </div>
+        </div>
+
+        {/* Preparation Time */}
+        <div>
+          <label className="block text-xs font-bold uppercase tracking-wider text-[#1F1F1F] mb-1.5">
+            Preparation / Cooking Time (Minutes)
+          </label>
+          <input
+            id="add-food-prep-time-input"
+            type="number"
+            min="1"
+            value={prepTime}
+            onChange={(e) => setPrepTime(e.target.value)}
+            placeholder="e.g. 15"
+            className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-sm text-[#1F1F1F] focus:bg-white focus:ring-2 focus:ring-[#0C831F] focus:outline-none transition-all"
+          />
         </div>
 
         {/* Availability and Dietary Type */}

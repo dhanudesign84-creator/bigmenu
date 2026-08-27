@@ -29,6 +29,7 @@ export interface MenuItem {
   image_url: string;
   available: boolean;
   vegetarian: boolean;
+  prep_time?: number;
   created_at?: string;
   updated_at?: string;
 }

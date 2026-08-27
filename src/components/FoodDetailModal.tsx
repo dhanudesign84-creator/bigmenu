@@ -1,6 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, CheckCircle2, AlertCircle } from "lucide-react";
+import { X, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import type { MenuItem, Restaurant, Category } from "../types";
 
 interface FoodDetailModalProps {
@@ -84,7 +84,7 @@ export const FoodDetailModal: React.FC<FoodDetailModalProps> = ({
                 <h2 className="text-xl sm:text-2xl font-bold text-[#1F1F1F]">
                   {food.name}
                 </h2>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
                   {food.available ? (
                     <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#0C831F]">
                       <CheckCircle2 className="w-3.5 h-3.5" />
@@ -94,6 +94,12 @@ export const FoodDetailModal: React.FC<FoodDetailModalProps> = ({
                     <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600">
                       <AlertCircle className="w-3.5 h-3.5" />
                       Temporarily Unavailable
+                    </span>
+                  )}
+                  {food.prep_time && (
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                      <Clock className="w-3.5 h-3.5 text-gray-500" />
+                      {food.prep_time} mins
                     </span>
                   )}
                 </div>

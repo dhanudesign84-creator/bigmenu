@@ -126,6 +126,20 @@ export function getSupabase(): SupabaseClient | null {
  * into the application's MenuItem interface.
  */
 export function normalizeSupabaseMenuItem(row: Record<string, any>): MenuItem {
+  // Read extra fields (description, vegetarian, prep_time) from local metadata if present
+  let itemMeta: Record<string, any> = {};
+  if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+    try {
+      const metadataStr = localStorage.getItem("menu_item_metadata");
+      if (metadataStr) {
+        const metadata = JSON.parse(metadataStr);
+        itemMeta = metadata[row.id] || {};
+      }
+    } catch (e) {
+      console.warn("Could not read menu_item_metadata:", e);
+    }
+  }
+
   // Category field resolution
   let categoryVal = "General";
   if (row.category !== undefined && row.category !== null && String(row.category).trim() !== "") {
@@ -152,7 +166,9 @@ export function normalizeSupabaseMenuItem(row: Record<string, any>): MenuItem {
   const name = String(row.name || row.title || row.dish_name || row.item_name || "Food Item").trim();
 
   // Description field resolution
-  const description = String(row.description || row.desc || row.details || `Delicious freshly prepared ${name}`).trim();
+  const description = itemMeta.description !== undefined
+    ? String(itemMeta.description).trim()
+    : String(row.description || row.desc || row.details || `Delicious freshly prepared ${name}`).trim();
 
   // Image URL field resolution (fallback to fresh food image if null/empty)
   let imageUrl = row.image_url || row.image || row.photo_url || row.img_url || row.imageUrl || row.cover_image;
@@ -182,27 +198,36 @@ export function normalizeSupabaseMenuItem(row: Record<string, any>): MenuItem {
 
   // Vegetarian field resolution (default true)
   let vegetarian = true;
-  if (row.vegetarian !== undefined && row.vegetarian !== null) {
-    vegetarian =
-      row.vegetarian === true ||
-      row.vegetarian === "true" ||
-      row.vegetarian === 1 ||
-      row.vegetarian === "t";
-  } else if (row.is_vegetarian !== undefined && row.is_vegetarian !== null) {
-    vegetarian =
-      row.is_vegetarian === true ||
-      row.is_vegetarian === "true" ||
-      row.is_vegetarian === 1 ||
-      row.is_vegetarian === "t";
-  } else if (row.is_veg !== undefined && row.is_veg !== null) {
-    vegetarian =
-      row.is_veg === true ||
-      row.is_veg === "true" ||
-      row.is_veg === 1 ||
-      row.is_veg === "t";
-  } else if (row.type !== undefined && row.type !== null) {
-    vegetarian = String(row.type).toLowerCase() === "veg" || String(row.type).toLowerCase() === "vegetarian";
+  if (itemMeta.vegetarian !== undefined) {
+    vegetarian = Boolean(itemMeta.vegetarian);
+  } else {
+    if (row.vegetarian !== undefined && row.vegetarian !== null) {
+      vegetarian =
+        row.vegetarian === true ||
+        row.vegetarian === "true" ||
+        row.vegetarian === 1 ||
+        row.vegetarian === "t";
+    } else if (row.is_vegetarian !== undefined && row.is_vegetarian !== null) {
+      vegetarian =
+        row.is_vegetarian === true ||
+        row.is_vegetarian === "true" ||
+        row.is_vegetarian === 1 ||
+        row.is_vegetarian === "t";
+    } else if (row.is_veg !== undefined && row.is_veg !== null) {
+      vegetarian =
+        row.is_veg === true ||
+        row.is_veg === "true" ||
+        row.is_veg === 1 ||
+        row.is_veg === "t";
+    } else if (row.type !== undefined && row.type !== null) {
+      vegetarian = String(row.type).toLowerCase() === "veg" || String(row.type).toLowerCase() === "vegetarian";
+    }
   }
+
+  // Prep time resolution (default undefined)
+  const prep_time = itemMeta.prep_time !== undefined
+    ? Number(itemMeta.prep_time)
+    : (row.prep_time !== undefined && row.prep_time !== null ? Number(row.prep_time) : undefined);
 
   return {
     id: String(row.id ?? `item_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`),
@@ -214,6 +239,7 @@ export function normalizeSupabaseMenuItem(row: Record<string, any>): MenuItem {
     image_url: imageUrl,
     available,
     vegetarian,
+    prep_time,
     created_at: row.created_at || new Date().toISOString(),
     updated_at: row.updated_at || new Date().toISOString(),
   };
